@@ -21,6 +21,20 @@ export default new Vuex.Store({
 				transports:['websocket'],
 				timeout:5000
 			})
+			let onlineEvent = (e) => {
+				uni.$emit('live', {
+					type:'online',
+					data:e
+				})
+			}
+			
+			let commentEvent = (e) => {
+				uni.$emit('live', {
+					type:'comment',
+					data:e
+				})
+			}
+			
 			// 监听链接
 			S.on('connect',() => {
 				console.log('已连接')
@@ -28,16 +42,39 @@ export default new Vuex.Store({
 				state.socket = S
 				const { id }  = S
 				S.on(id ,(e) => {
-					console.log(e)
+					let d = e.data
+					if (d.action === 'error') {
+						let msg = d.payload
+						if (e.meta.notoast) {
+							return
+						}
+						return uni.showToast({
+							title:msg,
+							icon:"none"
+						})
+					}
 				})
+				// 监听在线用户信息
+				S.on('online',onlineEvent)
+				// 监听评论
+				S.on('comment',commentEvent)
 			})
+			// 移除监听事件
+			const removeListener = () => {
+				if (S) {
+					S.removeListener('online',onlineEvent)
+					S.removeListener('comment',commentEvent)
+				}
+			}
 			// 监听失败
 			S.on('error',() => {
+				removeListener()
 				state.socket = null
 				console.log('连接失败')
 			})
 			// 断开链接
 			S.on('disconnect',() => {
+				removeListener()
 				state.socket = null
 				console.log('断开链接')
 			})

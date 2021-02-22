@@ -30,7 +30,7 @@
 					if (len > 0 && this.list[len -1]) {
 						this.scrollIntoView = 'danmu' + this.list[len - 1].id
 					}
-				},2000)
+				},300)
 			}
 		}
 	}

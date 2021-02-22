@@ -21,16 +21,17 @@
 				</view>
 				
 				<view style="width: 325rpx; background-color: rgba(0,0,0,0.4);" class="flex rounded-circle">
+					
 					<scroll-view scroll-x="true" class="flex-1 flex">
-						<view class="p" v-for="i in 20" :key="i">
-							<image src="../../static/gift/7.png" style="width: 70rpx;height: 70rpx;" class="rounded-circle" mode=""></image>
+						<view class="p" v-for="(item,index) in list" :key="index">
+							<image :src="item.avatar || '../../static/gift/7.png'" style="width: 70rpx;height: 70rpx;" class="rounded-circle" mode=""></image>
 						</view>
 					</scroll-view>
 					
 					<view class="p">
 						<view class="rounded-circle flex align-center justify-center bg-danger" style="width: 70rpx;height: 70rpx;">
 							<!-- 实时在线人数 -->
-							<text class="text-white font-sm">1000</text>
+							<text class="text-white font-sm">{{list.length}}</text>
 						</view>
 					</view>
 				</view>
@@ -131,6 +132,7 @@
 	import fDanmu from '@/components/live/f-danmu.vue';
 	import $H from '@/common/request.js'
 	import $C from '@/common/config.js'
+	import { mapState } from 'vuex'
 	export default {
 		data() {
 			return {
@@ -156,7 +158,8 @@
 						avatar: ""
 					}
 				},
-				sign:""
+				sign:"",
+				list:[], //在线用户列表
 			}
 		},
 		components:{
@@ -164,13 +167,24 @@
 			uniPopup,
 			fDanmu
 		},
+		destroyed() {
+			// 离开直播间
+			this.joinOrLeaveLive('leave')
+			// 移除事件
+			uni.$off('live',this.handleLiveEvent)
+		},
 		computed:{
+			...mapState({
+				socket:state=>state.socket,
+				token:state=>state.token
+			}),
 			src() {
 				if (this.detail.key == '' || this.sign == '') {
 					return ''
 				}
 				return `http://192.168.8.63:23481/live/${this.detail.key}.flv?sign=${this.sign}`
 			}
+			
 		},	
 		onLoad(e) {
 			this.id = e.id;
@@ -189,21 +203,44 @@
 					return item
 				})
 			})
+			// 监听事件
+			uni.$on('live',this.handleLiveEvent)
 		},
 		mounted() {
-			
-		// 	// 送礼物
-		// 	setInterval(() => {
-		// 		this.$refs.gift.send({
-		// 			username:"发送人",
-		// 			avatar:"",
-		// 			gift_name:"蛋糕",
-		// 			gift_image:'/static/gift/3.png',
-		// 			num:1
-		// 		})
-		// 	},3000)
+		// 加入直播间
+		this.joinOrLeaveLive('join')
 		},
 		methods: {
+			handleLiveEvent(e) {
+				console.log(e)
+				let d = e.data
+				switch (e.type){
+					case 'online' :
+						if (d.action === 'join') {
+							this.list = d.data
+						}		
+						break;
+					case 'comment' :
+						this.$refs.danmu.send({
+							id:d.id,
+							name:d.user.name,
+							content:d.content,
+						})
+						this.content=''
+						this.$refs.input.close()	
+						break;
+					default:
+						break;
+				}
+			},
+			joinOrLeaveLive(type) {
+				if (this.socket && this.token) {
+					this.socket.emit(type+'Live',{
+						live_id:this.id,
+						token:this.token
+					})
+				}
+			},
 			openCoin(){
 				uni.navigateTo({
 					url:"../coin/coin"
@@ -248,16 +285,33 @@
 				})
 			},
 			submit() {
-				if (this.content === '') {
-					return
+				console.log(222)
+				// 发送弹幕
+				if (this.content == '') {
+					return uni.showToast({
+						title:"评论内容不能为空",
+						icon:"none"
+					})
 				}
-				this.$refs.danmu.send({
-					id:Math.random()*100,
-					name:"昵称",
-					content:this.content,
-				})
-				this.content=''
-				this.$refs.input.close()
+				if(!this.token && !this.socket) {
+					uni.navigateTo({
+						url:"../login/login"
+					})
+					return uni.showToast({
+						title:"请先登录",
+						icon:"none"
+					})
+				}
+				
+				if(this.socket) {
+					this.socket.emit('comment',{
+						live_id:this.id,
+						data:this.content,
+						token:this.token
+					})
+				}
+				
+				
 			}
 		}
 	}

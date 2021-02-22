@@ -79,5 +79,8 @@ module.exports = app => {
   router.post('/api/gift/notify', controller.api.gift.notify); //支付回调
   router.get('/api/gift/list', controller.api.gift.list); //礼物列表
 
+
+  io.of('/').route('comment', io.controller.nsp.comment);
   io.of('/').route('joinLive', io.controller.nsp.joinLive);
+  io.of('/').route('leaveLive', io.controller.nsp.leaveLive);
 };

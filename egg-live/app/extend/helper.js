@@ -1,9 +1,12 @@
 module.exports = {
   parseMsg(action, payload = {}, metadata = {}) {
-    const meta = Object.assign({}, {
+    // const meta = Object.assign({}, {
+    //   timestamp: Date.now(),
+    // }, metadata);
+    const meta = {
       timestamp: Date.now(),
-    }, metadata);
-
+      ...metadata
+    }
     return {
       meta,
       data: {
