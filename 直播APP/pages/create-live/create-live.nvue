@@ -22,18 +22,18 @@
 		<view v-if="showBars">
 			<view style="position: fixed;left: 0;right: 0;height: 500rpx;" :style="'top:'+statusBarHeight+'px'">
 				
-				<view class="flex align-center justify-center" style="width: 90rpx;height: 90rpx;">
+				<view class="flex align-center justify-center" style="width: 90rpx;height: 90rpx;" @click="back">
 					<text class="iconfont text-white">&#xe607;</text>
 				</view>
 				<!-- 中间 -->
 				<view class="position-absolute rounded p-2 flex align-center " style="left: 90rpx;right: 100rpx;height: 160rpx;background-color: rgba(0,0,0,0.2);">
-					<view style="height: 120rpx;width: 120rpx;" class="position-relative rounded">
-						<image src="/static/gift/2.png" style="height: 120rpx;width: 120rpx;"></image>
+					<view style="height: 120rpx;width: 120rpx;" class="position-relative rounded" @click="chooseCover">
+						<image :src="form.cover || '/static/gift/2.png'" style="height: 120rpx;width: 120rpx;"></image>
 						<text class="text-white position-absolute font" style="left: 0;right: 0;bottom: 0;">更换封面</text>
 					</view>
 					<view class="flex-1 ml-2">
-						<input type="text" value="" placeholder="请输入直播标题" class="mb-2" />
-						<text class="text-white font">#请选择分类</text>
+						<input type="text" v-model="form.title" placeholder="请输入直播标题" class="mb-2 text-info" />
+						<!-- <text class="text-white font">#请选择分类</text> -->
 					</view>
 				</view>
 				<!-- 右边 -->
@@ -97,6 +97,8 @@
 
 <script>
 	import uniPopup from '@/components/uni-ui/uni-popup/uni-popup.vue';
+	import $H from '@/common/request.js'
+	import $C from '@/common/config.js'
 	export default {
 		components:{
 			uniPopup
@@ -123,7 +125,11 @@
 					desc:"超清"
 				}],
 				popupType:"mode",
-				showBars:true
+				showBars:true,
+				form:{
+					title:"",
+					cover:""
+				}
 			}
 		},
 		onBackPress() {
@@ -149,15 +155,40 @@
 			}
 		},
 		methods: {
+			chooseCover() {
+				uni.chooseImage({
+					count:1,
+					success:(res)=> {
+						$H.upload('/upload',{
+							filePath:res.tempFilePaths[0]
+						},(p)=> {
+							console.log(p)
+						}).then(res => {
+							this.form.cover = $C.imageUrl + res.url
+						})
+					}
+				})
+			},
+			back(){
+				uni.navigateBack({
+					delta:1
+				})
+			},
 			openLiveRoom(){
-				uni.navigateTo({
-					url:"../liveroom/liveroom?options="+JSON.stringify({
-						mode:this.mode,
-						position:this.position,
-						beauty:this.beauty,
-						whiteness:this.whiteness
+				$H.post('/live/create',this.form,{
+					token:true
+				}).then(res => {
+					console.log(res)
+					uni.navigateTo({
+						url:"../liveroom/liveroom?options="+JSON.stringify({
+							mode:this.mode,
+							position:this.position,
+							beauty:this.beauty,
+							whiteness:this.whiteness
+						}+'&data='+encodeURIComponent(JSON.stringify(res)))
 					})
 				})
+				
 			},
 			handleSliderChange(e){
 				// 美颜设置

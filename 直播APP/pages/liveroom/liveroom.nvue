@@ -24,11 +24,11 @@
 			<view style="height: 80rpx;" class="px-2 flex justify-between align-center">
 				<view style="width: 325rpx; background-color: rgba(0,0,0,0.4);" class="flex rounded-circle">
 					<view class="p">
-						<image src="../../static/gift/7.png" style="width: 70rpx;height: 70rpx;" class="rounded-circle" mode=""></image>
+						<image :src="user.avatar || '../../static/gift/7.png'" style="width: 70rpx;height: 70rpx;" class="rounded-circle" mode=""></image>
 					</view>
 					<view class="flex-1 flex flex-column justify-center">
-						<text class="text-white font">昵称</text>
-						<text class="text-white font-sm">100</text>
+						<text class="text-white font">{{user.nickname || user.username}}</text>
+						<text class="text-white font-sm">{{detail.look_coun}}</text>
 					</view>
 					<view class="p">
 						<view class="rounded-circle flex align-center justify-center bg-danger" style="width: 70rpx;height: 70rpx;">
@@ -39,14 +39,14 @@
 				
 				<view style="width: 325rpx; background-color: rgba(0,0,0,0.4);" class="flex rounded-circle">
 					<scroll-view scroll-x="true" class="flex-1 flex">
-						<view class="p" v-for="i in 20" :key="i">
-							<image src="../../static/gift/7.png" style="width: 70rpx;height: 70rpx;" class="rounded-circle" mode=""></image>
+						<view class="p" v-for="(item,index) in list" :key="index">
+							<image :src="item.avatar || '../../static/gift/7.png'" style="width: 70rpx;height: 70rpx;" class="rounded-circle" mode=""></image>
 						</view>
 					</scroll-view>
 					
 					<view class="p">
 						<view class="rounded-circle flex align-center justify-center bg-danger" style="width: 70rpx;height: 70rpx;">
-							<text class="text-white font-sm">100</text>
+							<text class="text-white font-sm">{{list.length}}</text>
 						</view>
 					</view>
 				</view>
@@ -59,7 +59,7 @@
 						<text class="text-warning font-sm">金币</text>
 					</view>
 					<view class="rounded-circle flex align-center justify-center" style="width: 70rpx;height: 70rpx;">
-						<text class="text-white font">100</text>
+						<text class="text-white font">{{detail.coin}}</text>
 					</view>
 				</view>
 			</view>
@@ -106,7 +106,7 @@
 						<text class="iconfont mb-1">&#xe611;</text>
 						<text class="font">{{ isPause ? '继续' : '暂停' }}</text>
 					</view>
-					<view class="flex flex-column align-center justify-center" style="width: 150rpx;height: 150rpx;" @click="back">
+					<view class="flex flex-column align-center justify-center" style="width: 150rpx;height: 150rpx;" @click="quite">
 						<text class="iconfont mb-1">&#xe64d;</text>
 						<text class="font">退出</text>
 					</view>
@@ -126,7 +126,9 @@
 	import fGift from '@/components/live/f-gift.vue'
 	import uniPopup from '@/components/uni-ui/uni-popup/uni-popup.vue';
 	import fDanmu from '@/components/live/f-danmu.vue';
-	import demoGifts from '@/demo/gifts.js';
+	// import demoGifts from '@/demo/gifts.js';
+	import 	$H from '@/common/request.js'
+	import { mapState } from 'vuex'
 	export default {
 		data() {
 			return {
@@ -179,7 +181,30 @@
 					event:"openPopup",
 					params:"more"
 				}],
-				isPause:true
+				detail:{
+					created_time: "",
+					id: 0,
+					title: "",
+					cover: "",
+					user_id: 0,
+					look_coun: 0,
+					coin: 0,
+					key: "",
+					status: 0,
+					userId: 0,
+					user: {
+						id: 0,
+						username: "",
+						avatar: ""
+					}
+				},
+				sign:"",
+				list:[],
+				// 是否推流
+				isStart:false,
+				isPause:false,
+				
+				isget:false
 			}
 		},
 		components:{
@@ -187,27 +212,48 @@
 			uniPopup,
 			fDanmu
 		},
+		mounted() {
+			// 加入直播间
+			this.joinOrLeaveLive('join')
+		},
+		destroyed() {
+			// 离开直播间
+			this.joinOrLeaveLive('leave')
+			// 移除事件
+			uni.$off('live',this.handleLiveEvent)
+		},
 		onLoad(e) {
+			console.log(e,'eee')
 			let res = uni.getSystemInfoSync()
 			this.statusBarHeight =  res.statusBarHeight
 			this.windowHeight = res.windowHeight
-			
-			let options = JSON.parse(e.options)
-			
-			this.mode = options.mode
-			this.position =options.position
-			this.beauty=options.beauty
-			this.whiteness=options.whiteness
-			
-			
-			// 礼物数据
-			this.gifts = demoGifts
+			if (e.options) {
+				let options = JSON.parse(e.options)
+				this.mode = options.mode
+				this.position =options.position
+				this.beauty=options.beauty
+				this.whiteness=options.whiteness
+			}
+			if (e.data) {
+				let d = JSON.parse(decodeURIComponent(e.data))
+				this.detail = d.data
+				this.sign = d.sign
+			}
+			// 监听事件
+			uni.$on('live',this.handleLiveEvent)
 		},
 		onReady() {
 			this.context = uni.createLivePusherContext('livePusher', this)
 			this.startPreview()
+			// 开始推流
+			this.start()
 		},
 		computed: {
+			...mapState({
+				user:state=>state.user,
+				socket:state=>state.socket,
+				token:state=>state.token
+			}),
 			popupTitle() {
 				let o = {
 					mode:"画质",
@@ -218,26 +264,133 @@
 				return o[this.popupType]
 			}
 		},
+		onBackPress() {
+			// 监听返回
+			if (!this.isget) {
+				this.quite()
+				return true
+			}
+		},
 		methods: {
-			pauseOrPlay() {
-				
+			start(){
+				// 开始推流
+				this.context.start({
+					success:() =>{
+						this.isStart = true
+						$H.post('/live/changestatus',{
+							id:this.detail.id,
+							type:'play'
+						},{token:true}).then(res => {
+							this.joinOrLeaveLive('join')
+						}).catch(err =>{
+							console.log(err)
+						})
+					}
+				})
 			},
-			back(){
+			pause(){
+				// 暂停推流
+				this.context.pause({
+					success:() =>{
+						this.isPause = true
+						$H.post('/live/changestatus',{
+							id:this.detail.id,
+							type:'pause'
+						},{token:true})
+					}
+				})
+			},
+			resume() {
+				// 继续推流
+				this.context.resume({
+					success:() =>{
+						this.isPause = false
+						$H.post('/live/changestatus',{
+							id:this.detail.id,
+							type:'play'
+						},{token:true})
+					}
+				})
+			},
+			stop(){
+				// 停止推流
+				this.context.stop({
+					success:() =>{
+						this.isStart = false
+						$H.post('/live/changestatus',{
+							id:this.detail.id,
+							type:'stop'
+						},{token:true})
+					}
+				})
+			},
+			pauseOrPlay() {
+				if(!this.isPause) {
+					return uni.showModal({
+						content: '是否要暂停推流',
+						success: (res) =>{
+							if (res.cancel) {
+								return
+							}
+							this.pause()
+						}
+					});
+				}
+				// 继续推流
+				this.resume()
+			},
+			quite() {
 				uni.showModal({
-					content: '是否要退出直播间？',
-					success: (res)=> {
+					content: '是否要退出直播间',
+					success:(res)=> {
 						if (res.cancel) {
 							return
 						}
+						this.stop()
+						this.isget = true
 						uni.navigateBack({
-							delta: 1
-						});
+							delta:1
+						})
 						uni.showToast({
-							title: '退出直播间成功',
-							icon: 'none'
-						});
+							title:"退出直播间成功",
+							icon:"none"
+						})
 					}
 				});
+			},
+			handleLiveEvent(e) {
+				console.log(e)
+				let d = e.data
+				switch (e.type){
+					case 'online' :
+						if (d.action === 'join') {
+							this.list = d.data
+						}		
+						break;
+					case 'comment' :
+						this.$refs.danmu.send({
+							id:d.id,
+							name:d.user.name,
+							content:d.content,
+						})
+							break;
+					case 'gift' :
+						d.gift_image = $C.imageUrl + d.gift_image
+						this.detail.coin += d.gift_coin * d.num
+						this.$refs.gift.send(d)
+						this.closeGift()
+							break;
+					default:
+						break;
+				}
+			},
+			joinOrLeaveLive(type) {
+				if (this.socket && this.token) {
+					this.socket.emit(type+'Live',{
+						live_id:this.id,
+						token:this.token
+					})
+				}
 			},
 			handleBottomEvent(item){
 				this[item.event](item.params)

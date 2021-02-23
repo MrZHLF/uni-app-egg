@@ -228,7 +228,13 @@
 						})
 						this.content=''
 						this.$refs.input.close()	
-						break;
+							break;
+					case 'gift' :
+						d.gift_image = $C.imageUrl + d.gift_image
+						this.detail.coin += d.gift_coin * d.num
+						this.$refs.gift.send(d)
+						this.closeGift()
+							break;
 					default:
 						break;
 				}
@@ -259,14 +265,23 @@
 					return
 				}
 				let g= this.gifts[index]
-				this.$refs.gift.send({
-					username:"发送人",
-					avatar:"",
-					gift_name: g.name,
-					gift_image:g.image,
-					num:1
-				})
-				this.closeGift()
+				if (!this.socket && this.token) {
+					uni.navigateTo({
+						url:"../login/login"
+					})
+					return uni.showToast({
+						title:"请先登录",
+						icon:"none"
+					})
+				}
+				if(this.socket) {
+					this.socket.emit('gift',{
+						live_id:this.id,
+						gift_id:g.id,
+						token:this.token
+					})
+				}
+				
 			},
 			openGift(){
 				this.$refs.giftPopup.open()

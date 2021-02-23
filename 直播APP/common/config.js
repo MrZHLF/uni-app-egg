@@ -6,7 +6,7 @@ export default {
 	// baseUrl:"http://liveapi2.dishait.cn",
 	baseUrl:"http://192.168.8.63:7001",
 	socketUrl:"http://192.168.8.63:7001",
-	imageUrl:"http://liveapi2.dishait.cn",
+	imageUrl:"http://192.168.8.63:7001",
 	
 	// 拉流前缀
 	livePlayBaseUrl:"http://liveapi2.dishait.cn:23481",

@@ -78,9 +78,11 @@ module.exports = app => {
   router.post('/api/gift/wxpay', controller.api.gift.wxpay); //微信支付
   router.post('/api/gift/notify', controller.api.gift.notify); //支付回调
   router.get('/api/gift/list', controller.api.gift.list); //礼物列表
+  router.post('/api/upload', controller.api.common.upload); //上传
 
 
   io.of('/').route('comment', io.controller.nsp.comment);
   io.of('/').route('joinLive', io.controller.nsp.joinLive);
   io.of('/').route('leaveLive', io.controller.nsp.leaveLive);
+  io.of('/').route('gift', io.controller.nsp.gift);
 };

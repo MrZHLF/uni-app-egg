@@ -18,7 +18,7 @@ class LiveController extends Controller {
       },
       cover: {
         type: 'string',
-        required: true,
+        required: false,
         desc: '直播间封面'
       }
     });

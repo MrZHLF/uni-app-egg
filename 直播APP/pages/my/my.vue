@@ -20,11 +20,10 @@
 		
 		<view class="flex align-center" v-else>
 			<view class="flex align-center justify-center" style="width: 180rpx;height: 180rpx;">
-				<image :src="user.avatar" class="rounded-circle" style="width: 105rpx;height: 105rpx;"></image>
+				<image :src="avatar" class="rounded-circle" style="width: 105rpx;height: 105rpx;"></image>
 			</view>
 			<view class="flex flex-column">
 				<text class="font-md">{{user.username}}</text>
-				<!-- <text class="font text-muted">{{user.}}</text> -->
 			</view>
 			
 			<view class="ml-auto mr-3">
@@ -52,10 +51,11 @@
 <script>
 	import fListItem from '../../components/common/f-list-item.vue';
 	import { mapState } from 'vuex'
+	import $C from '@/common/config.js'
 	export default {
 		data() {
 			return {
-				
+				avatar: ""
 			}
 		},
 		components:{
@@ -65,6 +65,10 @@
 			...mapState({
 				user:state => state.user
 			})
+		},
+		created() {
+			console.log(this.user)
+			this.avatar = $C.imageUrl + this.user.avatar
 		},
 		onShow() {
 			this.$store.dispatch('getUserInfo')
